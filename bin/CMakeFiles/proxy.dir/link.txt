@@ -1,1 +1,0 @@
-/usr/bin/c++   -Wall -Wpedantic -Wextra    CMakeFiles/proxy.dir/src/main.cpp.o CMakeFiles/proxy.dir/src/proxy_server.cpp.o CMakeFiles/proxy.dir/src/proxy-session.cpp.o CMakeFiles/proxy.dir/src/cache.cpp.o  -o proxy  -lpthread 

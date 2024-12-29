@@ -65,15 +65,12 @@ void Proxy_session::session_routine()
     {
         throw new std::runtime_error("Unable to get request from client.");
     }
-    
-    // std::cout << "Host of request is: '" << request->host << ":" << request->port << "'" << std::endl;
 
     if (request->port != 80) {
         delete request;
         throw new std::runtime_error("HTTP over TLS(HTTPS) is not supported");
     }
     
-    // std::cout << "Request is:\n" << request->raw << std::endl;
     std::cout << "Request url is: " << request->url << std::endl;
 
     if (_cache->contains(request->url)) {
@@ -102,7 +99,7 @@ Proxy_session::HttpRequest *Proxy_session::receive_http_request()
     while (true)
     {
 
-        int recv_size = recv(_client_socket, buff, buff_length, 0);
+        int recv_size = recv(_client_socket, buff, buff_length, MSG_NOSIGNAL);
 
         if (recv_size == -1)
         {
@@ -152,6 +149,7 @@ void Proxy_session::execute_http_request(HttpRequest *request)
     struct hostent *host = gethostbyname(request->host.c_str());
     if (host == nullptr)
     {
+        node->mark_as_invalid();
         std::cerr << "Couldn't get hostname from: '" << request->host << "'" << std::endl; 
         return;
     }
@@ -163,13 +161,17 @@ void Proxy_session::execute_http_request(HttpRequest *request)
 
     if (!connected)
     {
+        node->mark_as_invalid();
         std::cerr << "Couldn't connect to host." << std::endl;
         return;
     }
 
-    send_http_request_to_host(request);
-
-    // std::cout << "Request is sent to host.\nStarting response transferring." << std::endl;
+    try {
+        send_http_request_to_host(request);
+    }
+    catch(std::runtime_error* err) {
+        node->mark_as_invalid();
+    }
 
     handle_host_response(node);
 
@@ -216,7 +218,7 @@ void Proxy_session::send_http_request_to_host(Proxy_session::HttpRequest *reques
         }
         std::memcpy(buffer, request_bytes + bytes_sent, to_send);
 
-        int actual_sent = send(_host_socket, buffer, to_send, 0);
+        int actual_sent = send(_host_socket, buffer, to_send, MSG_NOSIGNAL);
 
         if (actual_sent == -1)
         {
@@ -234,10 +236,6 @@ void Proxy_session::handle_host_response(Cache::Cache_node* node)
     const int buff_length = 4096;
     char *buff = new char[buff_length];
 
-    // timeval timeout;
-    // timeout.tv_sec = 3;
-    // fd_set readfd;
-
     pthread_attr_t attrs;
     pthread_attr_init(&attrs);
     pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);      
@@ -245,20 +243,7 @@ void Proxy_session::handle_host_response(Cache::Cache_node* node)
     while (true)
     {
 
-        // FD_ZERO(&readfd);
-        // FD_SET(_host_socket, &readfd);
-
-        // int ready = select(_host_socket + 1, &readfd, nullptr, nullptr, &timeout);
-
-        // std::cout << "Host socket is ready" << std::endl;
-
-        // if (ready <= 0) {
-        //     break;
-        // }
-
-        int recv_size = recv(_host_socket, buff, buff_length, 0);
-
-        // std::cout << "Host socket received: '" << recv_size << "' bytes" << std::endl;
+        int recv_size = recv(_host_socket, buff, buff_length, MSG_NOSIGNAL);
 
         if (recv_size <= 0)
         {
@@ -269,9 +254,10 @@ void Proxy_session::handle_host_response(Cache::Cache_node* node)
 
         while (need_to_send > 0)  {
             // std::cout << "Preparing to send: '" << recv_size - need_to_send << "' bytes to client." << std::endl;
-            int sent_size = send(_client_socket, buff + (recv_size - need_to_send), need_to_send, 0);
+            int sent_size = send(_client_socket, buff + (recv_size - need_to_send), need_to_send, MSG_NOSIGNAL);
             // std::cout << "Sent: '" << sent_size << "' bytes to client." << std::endl;
             if (sent_size <= 0) {
+                node->mark_as_invalid();
                 delete[] buff;
                 return;
             }
@@ -307,12 +293,11 @@ void Proxy_session::execute_http_request_from_cache(HttpRequest *request)
 
     int total_bytes_sent = 0;
 
-    // const int buffer_size = node->getAvaliableBytes();
     const int buffer_size = 4096;
 
     char* buffer = new char[buffer_size];
 
-    while (!node->is_finalized() || (node->is_finalized() && total_bytes_sent != node->getAvaliableBytes())) {
+    while (node->is_valid() && (!node->is_finalized() || total_bytes_sent != node->getAvaliableBytes())) {        
         
         int need_to_read = node->getAvailableBytesFrom(read_begin);
 
@@ -332,7 +317,7 @@ void Proxy_session::execute_http_request_from_cache(HttpRequest *request)
 
         while (need_to_send > 0)  {
             // std::cout << "Preparing to send: '" << read_bytes << "' bytes to client." << std::endl;
-            int sent_size = send(_client_socket, buffer + (read_bytes - need_to_send), need_to_send, 0);
+            int sent_size = send(_client_socket, buffer + (read_bytes - need_to_send), need_to_send, MSG_NOSIGNAL);
             // std::cout << "Sent: '" << sent_size << "' bytes to client." << std::endl;
             if (sent_size <= 0) {
                 std::cerr << "[ERROR]: " << strerror(errno) << std::endl;
@@ -342,14 +327,8 @@ void Proxy_session::execute_http_request_from_cache(HttpRequest *request)
             need_to_send -= sent_size;
         }
 
-        if (buffer != nullptr) {
-            // delete[] buffer;
-        }
+        total_bytes_sent += read_bytes;
 
-        // buffer = nullptr;
-
-        total_bytes_sent += need_to_send;
-
-    } ;
+    };
     
 }

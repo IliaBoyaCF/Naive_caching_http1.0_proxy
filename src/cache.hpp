@@ -23,6 +23,10 @@ class Cache {
 
                 bool is_finalized();
 
+                bool is_valid();
+
+                void mark_as_invalid();
+
                 int getAvaliableBytes();
 
                 int getAvailableBytesFrom(int from);
@@ -38,7 +42,8 @@ class Cache {
                 pthread_mutex_t mutex;
                 std::vector<char>* data;
 
-                bool is_finalized_flag;   
+                bool is_finalized_flag;  
+                bool is_valid_flag; 
 
         };
 

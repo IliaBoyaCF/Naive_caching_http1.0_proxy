@@ -33,6 +33,12 @@ Cache::Cache_node *Cache::get(std::string request)
     pthread_mutex_lock(&mutex);
     auto search = cache->find(request);
     auto end = cache->end();
+
+    if (search != end && !search->second->is_valid()) {
+        cache->erase(request);
+        search = end;
+    }
+
     pthread_mutex_unlock(&mutex);
 
     if (search == end) {
@@ -45,15 +51,15 @@ Cache::Cache_node *Cache::get(std::string request)
 Cache::Cache_node *Cache::create_node(std::string keyRequest)
 {
     Cache_node* res;
-    pthread_mutex_lock(&mutex);
-    if (cache->find(keyRequest) != cache->end()) {
+    if (get(keyRequest) != nullptr) {
         res = nullptr;
     }
     else {
         res = new Cache_node();
+        pthread_mutex_lock(&mutex);
+        cache->insert(std::pair<std::string, Cache::Cache_node*>(keyRequest, res));
+        pthread_mutex_unlock(&mutex);
     }
-    cache->insert(std::pair<std::string, Cache::Cache_node*>(keyRequest, res));
-    pthread_mutex_unlock(&mutex);
     return res;
 }
 
@@ -90,6 +96,7 @@ Cache::Cache_node::Cache_node()
     data = new std::vector<char>();
     
     is_finalized_flag = false;
+    is_valid_flag = true;
 }
 
 Cache::Cache_node::~Cache_node()
@@ -105,6 +112,11 @@ int Cache::Cache_node::writeBytes(char *bytes, int length)
     int bytes_written;
 
     pthread_mutex_lock(&mutex);
+
+    if (!is_valid_flag) {
+        pthread_mutex_unlock(&mutex);
+        return 0;
+    }
     
     int length_before = data->size();
     for (int i = 0; i < length; ++i) {
@@ -132,6 +144,19 @@ void Cache::Cache_node::finalize()
 bool Cache::Cache_node::is_finalized()
 {
     return is_finalized_flag;
+}
+
+bool Cache::Cache_node::is_valid()
+{
+    return is_valid_flag;
+}
+
+void Cache::Cache_node::mark_as_invalid()
+{
+    is_valid_flag = false;
+    pthread_mutex_lock(&mutex);
+    data->clear();
+    pthread_mutex_unlock(&mutex);
 }
 
 int Cache::Cache_node::getAvaliableBytes()

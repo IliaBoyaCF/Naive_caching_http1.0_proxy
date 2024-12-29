@@ -1,3 +1,0 @@
-/home/ilia_boiarintsev/os/2_sem/http-proxy/bin/CMakeFiles/rebuild_cache.dir
-/home/ilia_boiarintsev/os/2_sem/http-proxy/bin/CMakeFiles/edit_cache.dir
-/home/ilia_boiarintsev/os/2_sem/http-proxy/bin/CMakeFiles/proxy.dir
