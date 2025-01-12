@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Link each target with other targets or add options, etc.
 
 # Adding something we can run - Output name matches target name
-add_executable(proxy src/main.cpp src/proxy_server.cpp src/proxy-session.cpp src/cache.cpp)
+add_executable(proxy src/main.cpp src/proxy_server.cpp src/proxy-session.cpp src/cache.cpp src/cache_reader.cpp)
 
 SET(WARN_FLAGS "-Wall -Wpedantic -Wextra")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${WARN_FLAGS} ${ASAN_OPTIONS}") 

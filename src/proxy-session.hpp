@@ -52,15 +52,6 @@ class Proxy_session {
 
                 return new HttpRequest(host, raw, port, url);
 
-                // uint16_t port = 0;
-                // if (hostname_end > full_name_end) {
-                //     port = 80;
-                //     return new HttpRequest(host, raw, port, url);
-                // }
-                // else {
-                //     uint16_t port = std::stoi(raw.substr(hostname_end + 1, full_name_end - hostname_end));
-                //     return new HttpRequest(host, raw, port, url);    
-                // }
             }
 
             static uint16_t parse_port(std::string request) {
@@ -155,6 +146,6 @@ class Proxy_session {
         bool connect_to_host(sockaddr_in* addr);
         void send_http_request_to_host(HttpRequest* request);
         void execute_http_request(HttpRequest* request);
-        void handle_host_response(Cache::Cache_node* node);
+        void handle_host_response(Cache_node* node);
         void execute_http_request_from_cache(HttpRequest* request);
 };

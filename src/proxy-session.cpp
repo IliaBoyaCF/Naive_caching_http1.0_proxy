@@ -1,5 +1,8 @@
 #include "proxy-session.hpp"
 
+#include "cache_reader.hpp"
+#include "cache_node.cpp"
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -136,7 +139,7 @@ void Proxy_session::execute_http_request(HttpRequest *request)
 
     std::cout << "[CACHE]: trying to create cache node" << std::endl;
 
-    Cache::Cache_node* node = _cache->create_node(request->url);
+    Cache_node* node = _cache->create_node(request->url);
 
     if (node == nullptr) { // In case if other thread already created node.
         std::cout << "[CACHE]: other thread has already created cache node. Going to get data via cache." << std::endl;
@@ -231,7 +234,7 @@ void Proxy_session::send_http_request_to_host(Proxy_session::HttpRequest *reques
     delete[] buffer;
 }
 
-void Proxy_session::handle_host_response(Cache::Cache_node* node)
+void Proxy_session::handle_host_response(Cache_node* node)
 {
     const int buff_length = 4096;
     char *buff = new char[buff_length];
@@ -279,7 +282,7 @@ void Proxy_session::execute_http_request_from_cache(HttpRequest *request)
 {
 
     std::cout << "[CACHE]: trying to get data" << std::endl;
-    Cache::Cache_node* node = _cache->get(request->url);
+    Cache_node* node = _cache->get(request->url);
 
     if (node == nullptr) {
         std::cout << "[CACHE]: data not found, going to execute request via network." << std::endl;
@@ -289,46 +292,40 @@ void Proxy_session::execute_http_request_from_cache(HttpRequest *request)
 
     std::cout << "[CACHE]: data found. Sending from cache." << std::endl;
 
-    int read_begin = 0;
+    Cache_reader* reader = node->new_reader();
 
-    int total_bytes_sent = 0;
-
-    const int buffer_size = 4096;
+    const int buffer_size = 4 * 1024;
 
     char* buffer = new char[buffer_size];
 
-    while (node->is_valid() && (!node->is_finalized() || total_bytes_sent != node->getAvaliableBytes())) {        
-        
-        int need_to_read = node->getAvailableBytesFrom(read_begin);
+    while (reader->is_valid() && reader->has_next()) {
 
-        if (need_to_read == 0) {
-            continue;
+        int read_bytes = reader->read(buffer, buffer_size);
+
+        std::cout << "Read: '" << read_bytes << "' bytes from cache." << std::endl;
+
+        if (read_bytes <= 0)
+        {
+            break;
         }
-
-        if (need_to_read > buffer_size) {
-            need_to_read = buffer_size;
-        }
-
-        int read_bytes = node->readFrom(read_begin, buffer, need_to_read);
-
-        read_begin += read_bytes;
 
         int need_to_send = read_bytes;
 
         while (need_to_send > 0)  {
-            // std::cout << "Preparing to send: '" << read_bytes << "' bytes to client." << std::endl;
+            std::cout << "Preparing to send: '" << read_bytes - need_to_send << "' bytes to client." << std::endl;
             int sent_size = send(_client_socket, buffer + (read_bytes - need_to_send), need_to_send, MSG_NOSIGNAL);
-            // std::cout << "Sent: '" << sent_size << "' bytes to client." << std::endl;
+            std::cout << "Sent: '" << sent_size << "' bytes to client." << std::endl;
             if (sent_size <= 0) {
-                std::cerr << "[ERROR]: " << strerror(errno) << std::endl;
+                delete reader;
                 delete[] buffer;
                 return;
             }
             need_to_send -= sent_size;
         }
 
-        total_bytes_sent += read_bytes;
+    }
 
-    };
+    delete[] buffer;
+    delete reader;
     
 }
