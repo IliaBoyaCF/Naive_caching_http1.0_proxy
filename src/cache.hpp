@@ -29,6 +29,8 @@ class Cache {
         // Returns nullptr if node assosiated with given key already exists.
         Cache_node* create_node(std::string keyRequest);
 
+        void delete_node(std::string request);
+
         void clear();
 
     private:

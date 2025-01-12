@@ -33,21 +33,22 @@ Proxy_server::Proxy_server(int port)
 Proxy_server::~Proxy_server()
 {
     close(_server_socket);
+    delete cache;
 }
 
-void sigpipe_handler(int sig_id) {
-    if (sig_id != SIGPIPE) {
-        throw new std::runtime_error("Sigpipe handler called on other signal.");
-    }
-    std::cerr << "Got SIGPIPE. Ignored." << std::endl;
-}
+// void sigpipe_handler(int sig_id) {
+//     if (sig_id != SIGPIPE) {
+//         throw new std::runtime_error("Sigpipe handler called on other signal.");
+//     }
+//     std::cerr << "Got SIGPIPE. Ignored." << std::endl;
+// }
 
 void Proxy_server::start()
 {
 
-    struct sigaction act;
-    act.sa_handler = sigpipe_handler;
-    sigaction(SIGPIPE, &act, NULL);
+    // struct sigaction act;
+    // act.sa_handler = sigpipe_handler;
+    // sigaction(SIGPIPE, &act, NULL);
 
     listen(_server_socket, s_connection_queue_length);
     server_routine();
@@ -60,7 +61,6 @@ void* session_thread(void* args) {
     try {
         session->open();
     }
-
     catch (std::exception* e) {
         std::cerr << e->what() << std::endl;
     }
@@ -72,9 +72,9 @@ void* session_thread(void* args) {
 
 void Proxy_server::server_routine()
 {
-    // timeval timeout;
-    // timeout.tv_usec = 100000; // 0.1 second
-    // fd_set readfd;
+    timeval timeout;
+    timeout.tv_usec = 100000; // 0.1 second
+    fd_set readfd;
 
     pthread_attr_t detached_state_attrs;
     pthread_attr_init(&detached_state_attrs);
@@ -82,14 +82,14 @@ void Proxy_server::server_routine()
 
     while (true) {
 
-        // FD_ZERO(&readfd);
-        // FD_SET(_server_socket, &readfd);
+        FD_ZERO(&readfd);
+        FD_SET(_server_socket, &readfd);
 
-        // int ready = select(_server_socket + 1, &readfd, nullptr, nullptr, &timeout);
+        int ready = select(_server_socket + 1, &readfd, nullptr, nullptr, &timeout);
         
-        // if (ready < 1) {
-        //     continue;
-        // }
+        if (ready < 1) {
+            continue;
+        }
 
         int client_socket = accept(_server_socket, nullptr, nullptr);
 

@@ -6,7 +6,7 @@ Cache_reader::Cache_reader(Cache_node *node)
 {
     this->node = node;
     next_byte_to_read = 0;
-    valid = true;
+    // valid = true;
 }
 
 Cache_reader::~Cache_reader()
@@ -22,14 +22,15 @@ Cache_reader::~Cache_reader()
 
 bool Cache_reader::has_next()
 {
-    if (!valid) {
-        return false;
-    }
+    // if (!valid) {
+    //     return false;
+    // }
 
     pthread_mutex_lock(&node->mutex);
 
     bool avaliable = node->getAvailableBytesFrom(next_byte_to_read) > 0;
-    while (valid && !avaliable && !node->is_finalized()) {
+    // while (valid && !avaliable && !node->is_finalized()) {
+    while (node->is_valid_flag && !avaliable && !node->is_finalized()) {
         pthread_cond_wait(&node->data_state_changed, &node->mutex);
         avaliable = node->getAvailableBytesFrom(next_byte_to_read) > 0;
     }
@@ -39,15 +40,15 @@ bool Cache_reader::has_next()
     return avaliable;
 }
 
-void Cache_reader::mark_as_invalid()
-{
-    valid = false;
-}
+// void Cache_reader::mark_as_invalid()
+// {
+//     valid = false;
+// }
 
-bool Cache_reader::is_valid()
-{
-    return valid;
-}
+// bool Cache_reader::is_valid()
+// {
+//     return valid;
+// }
 
 int Cache_reader::avaliable()
 {
@@ -66,7 +67,7 @@ int Cache_reader::read(char *buffer, int length)
 
     int need_to_read = length;
 
-    while (node->is_valid() && need_to_read > 0) {
+    while (node->is_valid_flag && need_to_read > 0) {
         int read_bytes = node->readFrom(next_byte_to_read, buffer + (length - need_to_read), need_to_read);
         next_byte_to_read += read_bytes;
         need_to_read -= read_bytes;

@@ -146,6 +146,6 @@ class Proxy_session {
         bool connect_to_host(sockaddr_in* addr);
         void send_http_request_to_host(HttpRequest* request);
         void execute_http_request(HttpRequest* request);
-        void handle_host_response(Cache_node* node);
+        void handle_host_response(Cache_node* node, std::string request_url);
         void execute_http_request_from_cache(HttpRequest* request);
 };

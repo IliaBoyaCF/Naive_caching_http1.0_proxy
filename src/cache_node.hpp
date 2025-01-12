@@ -22,10 +22,8 @@ class Cache_node {
         // Thread-safe.
         void finalize();
 
-        // Thread-safe.
         bool is_finalized();
 
-        // Thread-safe.
         bool is_valid();
 
         // Thread-safe.
@@ -48,7 +46,6 @@ class Cache_node {
 
     private:
         pthread_cond_t data_state_changed; // State considered as changed if new data has been written or node has been finilazed.
-        // pthread_cond_t finalized;
 
         pthread_mutex_t mutex;
         std::vector<char>* data;

@@ -23,6 +23,9 @@ Cache_node::Cache_node()
     
     is_finalized_flag = false;
     is_valid_flag = true;
+    is_deleted_flag = false;
+    
+    readers_count = 0;
 }
 
 Cache_node::~Cache_node()
@@ -88,6 +91,7 @@ void Cache_node::mark_as_invalid()
 {
     pthread_mutex_lock(&mutex);
     is_valid_flag = false;
+    is_deleted_flag = true;
     pthread_mutex_unlock(&mutex);
 }
 
